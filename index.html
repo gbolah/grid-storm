@@ -169,9 +169,7 @@
 </head>
 <body>
   <div id="startScreen">
-    <!-- ✅ Base64 logo -->
     <img id="logo" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAATgAAAE4CAMAAAD4oR9YAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAAgY0hSTQAAeiYAAICEAAD6AAAAgOgAAHUwAADqYAAAOpgAABdwnLpRPAAAACpQTFRFwP1cVG8pMD8XAAAAGCAMSF8jDBAGGCALMEAXeJ45bI80PFAdeJ46YH8uCZvTVgAAAeRJREFUeJzt3TluAzEQAEFZXkk+5P9/16GCBTZoGOCsUfUCopnxwFwuAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACrvV0HWx3nyPV9sNVxjggXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkX7cNttzFWxzmyDzd6uXMIFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRftw90fY0zew9HPvD5W1zkgXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXLQPd/1cZL+Uc4Vbdl59E64RLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi46e7ht1VDQ+8nDDSJcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcNDnc1+pRoC/bqcINcq47h0GEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLhIuEi4SLzhXue/Uo0BffLv+McJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcJFwkXCRcNHkcM+fwZ6r6wAAAAAAAAAAAAAAAAAAAAAAAAAAAADAf/ILRNW27H9IMzQAAAAASUVORK5CYII=" alt="Logo">
-    
     <div id="startTitle">GRIDSTORM</div>
     <button id="startButton">Start Game</button>
   </div>
@@ -193,7 +191,6 @@
   </div>
 
   <script>
-    // your entire JS (unchanged)
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     const startScreen = document.getElementById('startScreen');
@@ -205,7 +202,13 @@
     let gameState = {
       playing: false,
       frameCount: 0,
-      player: { x: 400, y: 300, size: 10, speed: 5, trail: [] },
+      player: {
+        x: 400,
+        y: 300,
+        size: 10,
+        speed: 5,
+        trail: []
+      },
       patterns: [],
       keys: {},
       score: 0,
@@ -214,11 +217,283 @@
     };
 
     document.getElementById('highScore').textContent = gameState.highScore;
+
     const colors = ['#c8ff00', '#00ffff', '#ff00ff', '#00ff88'];
 
-    // (Pattern class + game logic same as your version)
-    // ...
-    // (no need to modify anything else)
+    class Pattern {
+      constructor(type, currentWave) {
+        this.type = type;
+        this.color = colors[Math.floor(Math.random() * colors.length)];
+        this.speed = 2.5 + currentWave * 0.4;
+        this.width = 35;
+        this.life = 0;
+        this.active = true;
+
+        if (type === 'horizontal') {
+          this.x = 0;
+          this.y = Math.random() * canvas.height;
+        } else if (type === 'vertical') {
+          this.x = Math.random() * canvas.width;
+          this.y = 0;
+        } else if (type === 'diagonal') {
+          this.x = Math.random() < 0.5 ? -100 : canvas.width + 100;
+          this.y = Math.random() < 0.5 ? -100 : canvas.height + 100;
+          this.angle = Math.random() * Math.PI * 2;
+        } else if (type === 'pulse') {
+          this.x = Math.random() * canvas.width;
+          this.y = Math.random() * canvas.height;
+          this.radius = 0;
+          this.maxRadius = 180 + Math.random() * 80;
+          this.speed = 2 + currentWave * 0.25;
+          this.width = 25;
+        }
+      }
+
+      update() {
+        this.life++;
+
+        if (this.type === 'horizontal') {
+          this.y += this.speed;
+          if (this.y > canvas.height + 100) this.active = false;
+        } else if (this.type === 'vertical') {
+          this.x += this.speed;
+          if (this.x > canvas.width + 100) this.active = false;
+        } else if (this.type === 'diagonal') {
+          this.x += Math.cos(this.angle) * this.speed;
+          this.y += Math.sin(this.angle) * this.speed;
+          if (this.x < -200 || this.x > canvas.width + 200 || this.y < -200 || this.y > canvas.height + 200) {
+            this.active = false;
+          }
+        } else if (this.type === 'pulse') {
+          this.radius += this.speed;
+          if (this.radius > this.maxRadius) this.active = false;
+        }
+      }
+
+      draw() {
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = this.color;
+
+        if (this.type === 'horizontal') {
+          const gradient = ctx.createLinearGradient(0, this.y - this.width / 2, 0, this.y + this.width / 2);
+          gradient.addColorStop(0, 'rgba(0,0,0,0)');
+          gradient.addColorStop(0.5, this.color);
+          gradient.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, this.y - this.width / 2, canvas.width, this.width);
+
+          ctx.strokeStyle = this.color;
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            const x1 = Math.random() * canvas.width;
+            const x2 = Math.random() * canvas.width;
+            ctx.moveTo(x1, this.y - this.width / 2);
+            for (let j = 1; j < 6; j++) {
+              const t = j / 6;
+              const x = x1 + (x2 - x1) * t + (Math.random() - 0.5) * 40;
+              const y = this.y - this.width / 2 + this.width * t;
+              ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          }
+        } else if (this.type === 'vertical') {
+          const gradient = ctx.createLinearGradient(this.x - this.width / 2, 0, this.x + this.width / 2, 0);
+          gradient.addColorStop(0, 'rgba(0,0,0,0)');
+          gradient.addColorStop(0.5, this.color);
+          gradient.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(this.x - this.width / 2, 0, this.width, canvas.height);
+
+          ctx.strokeStyle = this.color;
+          ctx.lineWidth = 2;
+          for (let i = 0; i < 5; i++) {
+            ctx.beginPath();
+            const y1 = Math.random() * canvas.height;
+            const y2 = Math.random() * canvas.height;
+            ctx.moveTo(this.x - this.width / 2, y1);
+            for (let j = 1; j < 6; j++) {
+              const t = j / 6;
+              const y = y1 + (y2 - y1) * t + (Math.random() - 0.5) * 40;
+              const x = this.x - this.width / 2 + this.width * t;
+              ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+          }
+        } else if (this.type === 'diagonal') {
+          ctx.save();
+          ctx.translate(this.x, this.y);
+          ctx.rotate(this.angle);
+          const gradient = ctx.createLinearGradient(0, -this.width / 2, 0, this.width / 2);
+          gradient.addColorStop(0, 'rgba(0,0,0,0)');
+          gradient.addColorStop(0.5, this.color);
+          gradient.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(-500, -this.width / 2, 1000, this.width);
+          ctx.restore();
+        } else if (this.type === 'pulse') {
+          const gradient = ctx.createRadialGradient(this.x, this.y, this.radius - this.width, this.x, this.y, this.radius);
+          gradient.addColorStop(0, 'rgba(0,0,0,0)');
+          gradient.addColorStop(0.5, this.color);
+          gradient.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.strokeStyle = gradient;
+          ctx.lineWidth = this.width;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+
+        ctx.shadowBlur = 0;
+      }
+
+      checkCollision(player) {
+        if (this.type === 'horizontal') {
+          return Math.abs(player.y - this.y) < this.width / 2 + player.size;
+        } else if (this.type === 'vertical') {
+          return Math.abs(player.x - this.x) < this.width / 2 + player.size;
+        } else if (this.type === 'diagonal') {
+          const dx = player.x - this.x;
+          const dy = player.y - this.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 500) return false;
+          const perpDist = Math.abs(-Math.sin(this.angle) * dx + Math.cos(this.angle) * dy);
+          return perpDist < this.width / 2 + player.size;
+        } else if (this.type === 'pulse') {
+          const dx = player.x - this.x;
+          const dy = player.y - this.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          return Math.abs(dist - this.radius) < this.width / 2 + player.size;
+        }
+        return false;
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      gameState.keys[e.key.toLowerCase()] = true;
+    });
+
+    window.addEventListener('keyup', (e) => {
+      gameState.keys[e.key.toLowerCase()] = false;
+    });
+
+    function gameLoop() {
+      if (!gameState.playing) return;
+
+      gameState.frameCount++;
+      gameState.score = Math.floor(gameState.frameCount / 2);
+      gameState.wave = Math.floor(gameState.frameCount / 600) + 1;
+
+      document.getElementById('score').textContent = gameState.score;
+      document.getElementById('wave').textContent = gameState.wave;
+
+      // Clear
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Grid
+      ctx.strokeStyle = 'rgba(200, 255, 0, 0.08)';
+      ctx.lineWidth = 1;
+      const gridSize = 50;
+      for (let x = 0; x < canvas.width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, canvas.height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < canvas.height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+
+      // Spawn patterns
+      const spawnRate = Math.max(50 - gameState.wave * 3, 25);
+      if (gameState.frameCount % spawnRate === 0) {
+        const types = ['horizontal', 'vertical', 'diagonal', 'pulse'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        gameState.patterns.push(new Pattern(type, gameState.wave));
+      }
+
+      // Update patterns
+      gameState.patterns = gameState.patterns.filter(p => p.active);
+      gameState.patterns.forEach(p => {
+        p.update();
+        p.draw();
+        if (p.checkCollision(gameState.player)) {
+          endGame();
+        }
+      });
+
+      // Update player
+      const player = gameState.player;
+      if (gameState.keys['w'] || gameState.keys['arrowup']) player.y -= player.speed;
+      if (gameState.keys['s'] || gameState.keys['arrowdown']) player.y += player.speed;
+      if (gameState.keys['a'] || gameState.keys['arrowleft']) player.x -= player.speed;
+      if (gameState.keys['d'] || gameState.keys['arrowright']) player.x += player.speed;
+
+      player.x = Math.max(player.size, Math.min(canvas.width - player.size, player.x));
+      player.y = Math.max(player.size, Math.min(canvas.height - player.size, player.y));
+
+      player.trail.push({ x: player.x, y: player.y, life: 15 });
+      player.trail = player.trail.filter(t => t.life-- > 0);
+
+      // Draw trail
+      player.trail.forEach(t => {
+        const alpha = t.life / 15;
+        ctx.fillStyle = `rgba(0, 255, 255, ${alpha * 0.6})`;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00ffff';
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, player.size * alpha, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      // Draw player
+      ctx.fillStyle = '#00ffff';
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = '#00ffff';
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.size, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowBlur = 15;
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.size * 0.4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.shadowBlur = 0;
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+      startScreen.classList.add('hidden');
+      gameContainer.classList.add('active');
+      gameState.playing = true;
+      gameState.frameCount = 0;
+      gameState.patterns = [];
+      gameState.player.x = 400;
+      gameState.player.y = 300;
+      gameState.player.trail = [];
+      gameState.score = 0;
+      gameState.wave = 1;
+      gameOverDiv.classList.remove('active');
+      gameLoop();
+    }
+
+    function endGame() {
+      gameState.playing = false;
+      if (gameState.score > gameState.highScore) {
+        gameState.highScore = gameState.score;
+        localStorage.setItem('gridstormHighScore', gameState.highScore);
+        document.getElementById('highScore').textContent = gameState.highScore;
+      }
+      document.getElementById('finalScore').textContent = gameState.score;
+      document.getElementById('finalHighScore').textContent = gameState.highScore;
+      gameOverDiv.classList.add('active');
+    }
 
     startButton.addEventListener('click', startGame);
     restartButton.addEventListener('click', startGame);
